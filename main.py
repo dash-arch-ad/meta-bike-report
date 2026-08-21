@@ -35,8 +35,6 @@ def main():
 
     config = load_secret()
 
-    mask_sensitive_values(config)
-
     resolved = resolve_config(config)
 
     validate_config(resolved)
@@ -126,37 +124,10 @@ def load_secret():
         return json.loads(secret_env)
 
     except json.JSONDecodeError as e:
+        # Secretの実値はログへ出さない
         raise RuntimeError(
-            f"APP_SECRET_JSON is invalid JSON: {e}"
+            "APP_SECRET_JSON is invalid JSON"
         ) from e
-
-
-def mask_sensitive_values(config):
-
-    values = []
-
-    meta = config.get("meta", {})
-
-    for value in [
-        meta.get("token"),
-        meta.get("account_id"),
-    ]:
-
-        if value is None:
-            continue
-
-        value = str(value).strip()
-
-        if not value:
-            continue
-
-        if "\n" in value:
-            continue
-
-        values.append(value)
-
-    for value in sorted(set(values)):
-        print(f"::add-mask::{value}")
 
 
 def resolve_config(config):
@@ -280,21 +251,6 @@ def add_months(base_date, months):
 
 
 def get_target_date_ranges():
-    """
-    例：
-    2026/08/21 実行
-
-    month
-        2025/09 ～ 2026/08
-        過去12ヶ月
-
-    day
-        2026/07/01 ～ 2026/08/20
-
-    ad / gen_age / pf
-        2026/07
-        2026/08
-    """
 
     today_jst = datetime.now(
         JST
@@ -340,16 +296,14 @@ def get_target_date_ranges():
         -11
     )
 
-    monthly_12_ranges = (
-        build_month_ranges(
-            month_start_12,
-            latest_month,
-            yesterday
-        )
+    monthly_12_ranges = build_month_ranges(
+        month_start_12,
+        latest_month,
+        yesterday
     )
 
     # --------------------------------------------------------
-    # その他：過去2ヶ月
+    # month以外：過去2ヶ月
     # --------------------------------------------------------
 
     month_start_2 = add_months(
@@ -357,12 +311,10 @@ def get_target_date_ranges():
         -1
     )
 
-    monthly_2_ranges = (
-        build_month_ranges(
-            month_start_2,
-            latest_month,
-            yesterday
-        )
+    monthly_2_ranges = build_month_ranges(
+        month_start_2,
+        latest_month,
+        yesterday
     )
 
     # --------------------------------------------------------
@@ -751,15 +703,12 @@ def fetch_meta_insights(
         "time_increment":
             time_increment,
 
-        # 指定したアトリビューション期間
         "action_attribution_windows":
             json.dumps([
                 "1d_view",
                 "7d_click",
             ]),
 
-        # アカウント側の既定値で上書きさせず、
-        # 上記windowを使用
         "use_account_attribution_setting":
             "false",
 
@@ -770,7 +719,6 @@ def fetch_meta_insights(
     }
 
     if breakdowns:
-
         params["breakdowns"] = (
             ",".join(breakdowns)
         )
@@ -790,22 +738,36 @@ def fetch_meta_insights(
 
         except requests.HTTPError as e:
 
+            # レスポンス本文やURLをそのままログに出さない
             raise RuntimeError(
                 "Meta API request failed. "
-                f"status={response.status_code}, "
-                f"body={truncate_text(response.text)}"
+                f"status={response.status_code}"
             ) from e
 
         payload = response.json()
 
         if "error" in payload:
 
+            error = payload.get(
+                "error",
+                {}
+            )
+
+            error_code = error.get(
+                "code",
+                "unknown"
+            )
+
+            error_type = error.get(
+                "type",
+                "unknown"
+            )
+
+            # messageやfbtrace_idなどはログへ出さない
             raise RuntimeError(
-                "Meta API error: "
-                + json.dumps(
-                    payload["error"],
-                    ensure_ascii=False
-                )
+                "Meta API returned an error. "
+                f"code={error_code}, "
+                f"type={error_type}"
             )
 
         batch = payload.get(
@@ -826,6 +788,8 @@ def fetch_meta_insights(
         if not next_url:
             break
 
+        # next_urlにはaccess_tokenが含まれる可能性があるので
+        # 絶対にprintしない
         url = next_url
         params = None
 
@@ -837,18 +801,6 @@ def fetch_meta_insights(
 # ============================================================
 
 def extract_lead_metrics(item):
-    """
-    actions の中から
-
-    offsite_conversion.fb_pixel_lead
-
-    の
-
-    1d_view
-    7d_click
-
-    を取り出す。
-    """
 
     result = {
         "cv_view_1d": 0,
@@ -860,7 +812,10 @@ def extract_lead_metrics(item):
         []
     )
 
-    if not isinstance(actions, list):
+    if not isinstance(
+        actions,
+        list
+    ):
         return result
 
     for action in actions:
@@ -983,9 +938,10 @@ def connect_spreadsheet(
 
     except Exception as e:
 
+        # 認証オブジェクトの中身などをrepr(e)で
+        # そのままログに出さない
         raise RuntimeError(
-            "Google Sheets connection error: "
-            f"{repr(e)}"
+            "Google Sheets connection failed"
         ) from e
 
 
@@ -1032,25 +988,27 @@ def write_to_sheet(
                 )
             )
 
-        # 必要サイズ確保
         required_rows = max(
             len(rows) + 1,
             100
         )
 
-        if worksheet.row_count < required_rows:
-
+        if (
+            worksheet.row_count
+            < required_rows
+        ):
             worksheet.resize(
                 rows=required_rows
             )
 
-        if worksheet.col_count < 12:
-
+        if (
+            worksheet.col_count
+            < 12
+        ):
             worksheet.resize(
                 cols=12
             )
 
-        # 既存データ削除
         worksheet.clear()
 
         output = (
@@ -1058,22 +1016,18 @@ def write_to_sheet(
             + rows
         )
 
-        # RAWで書くことにより
-        # C/D列の日付シリアル値を数値として保持
         worksheet.update(
             range_name="A1",
             values=output,
             value_input_option="RAW",
         )
 
-        # C/D列を日付表示形式に設定
         format_date_columns(
             spreadsheet=spreadsheet,
             worksheet=worksheet,
             row_count=len(output),
         )
 
-        # 1行目固定
         worksheet.freeze(
             rows=1
         )
@@ -1086,9 +1040,9 @@ def write_to_sheet(
 
     except Exception as e:
 
+        # 例外全文をログに出さない
         raise RuntimeError(
-            f"Write error ({sheet_name}): "
-            f"{repr(e)}"
+            f"Google Sheets write failed: {sheet_name}"
         ) from e
 
 
@@ -1117,11 +1071,9 @@ def format_date_columns(
                         "endRowIndex":
                             row_count,
 
-                        # C列
                         "startColumnIndex":
                             2,
 
-                        # D列まで
                         "endColumnIndex":
                             4,
                     },
@@ -1246,24 +1198,6 @@ def to_number(value):
         ValueError
     ):
         return 0
-
-
-def truncate_text(
-    value,
-    limit=1000,
-):
-
-    value = str(
-        value
-    )
-
-    if len(value) <= limit:
-        return value
-
-    return (
-        value[:limit]
-        + "...(truncated)"
-    )
 
 
 # ============================================================
