@@ -195,8 +195,6 @@ def validate_config(resolved):
 
     if missing:
 
-        # Secretの実値は出さず、
-        # 不足している設定キー名のみ表示
         raise RuntimeError(
             "Missing required config keys: "
             + ", ".join(missing)
@@ -506,8 +504,8 @@ def fetch_meta_rows(
                         "month"
                     ],
 
-                    cv_view_1d=metrics[
-                        "cv_view_1d"
+                    cv_click_1d=metrics[
+                        "cv_click_1d"
                     ],
 
                     cv_click_7d=metrics[
@@ -562,8 +560,8 @@ def fetch_meta_rows(
 
                 day=day_value,
 
-                cv_view_1d=metrics[
-                    "cv_view_1d"
+                cv_click_1d=metrics[
+                    "cv_click_1d"
                 ],
 
                 cv_click_7d=metrics[
@@ -630,8 +628,8 @@ def fetch_meta_rows(
                         ""
                     ),
 
-                    cv_view_1d=metrics[
-                        "cv_view_1d"
+                    cv_click_1d=metrics[
+                        "cv_click_1d"
                     ],
 
                     cv_click_7d=metrics[
@@ -687,8 +685,8 @@ def fetch_meta_rows(
                         ""
                     ),
 
-                    cv_view_1d=metrics[
-                        "cv_view_1d"
+                    cv_click_1d=metrics[
+                        "cv_click_1d"
                     ],
 
                     cv_click_7d=metrics[
@@ -738,8 +736,8 @@ def fetch_meta_rows(
                         ""
                     ),
 
-                    cv_view_1d=metrics[
-                        "cv_view_1d"
+                    cv_click_1d=metrics[
+                        "cv_click_1d"
                     ],
 
                     cv_click_7d=metrics[
@@ -803,11 +801,12 @@ def fetch_meta_insights(
 
         # ----------------------------------------------------
         # アトリビューション
+        # クリック1日 / クリック7日
         # ----------------------------------------------------
 
         "action_attribution_windows":
             json.dumps([
-                "1d_view",
+                "1d_click",
                 "7d_click",
             ]),
 
@@ -845,8 +844,7 @@ def fetch_meta_insights(
 
         except requests.RequestException:
 
-            # URL・Token・response.text等は
-            # ログへ出さない
+            # URL・Token・response.text等はログへ出さない
             raise RuntimeError(
                 "Meta API request failed"
             ) from None
@@ -916,7 +914,7 @@ def extract_lead_metrics(
 ):
 
     result = {
-        "cv_view_1d":
+        "cv_click_1d":
             0,
 
         "cv_click_7d":
@@ -944,10 +942,10 @@ def extract_lead_metrics(
         ):
             continue
 
-        result["cv_view_1d"] = (
+        result["cv_click_1d"] = (
             to_number(
                 action.get(
-                    "1d_view",
+                    "1d_click",
                     0
                 )
             )
@@ -981,7 +979,7 @@ def make_output_row(
     gender="",
     age="",
     platform="",
-    cv_view_1d=0,
+    cv_click_1d=0,
     cv_click_7d=0,
 ):
 
@@ -1023,7 +1021,7 @@ def make_output_row(
 
         # K
         to_number(
-            cv_view_1d
+            cv_click_1d
         ),
 
         # L
@@ -1069,7 +1067,6 @@ def connect_spreadsheet(
             )
         )
 
-        # シートID等はログに出さない
         print(
             "Google Sheets connected successfully"
         )
@@ -1100,7 +1097,7 @@ def write_to_sheet(
         "gender",
         "age",
         "platform",
-        "cv_view_1d",
+        "cv_click_1d",
         "cv_click_7d",
     ]]
 
@@ -1193,7 +1190,8 @@ def write_to_sheet(
             rows=1
         )
 
-        # sheet_nameはログに出さない
+        # Code Scanning対策：
+        # sheet_nameなど設定由来の値はログへ出さない
         print(
             f"Write success: "
             f"{len(rows)} rows"
@@ -1201,8 +1199,6 @@ def write_to_sheet(
 
     except Exception:
 
-        # sheet_nameや認証系情報を
-        # エラーログへ出さない
         raise RuntimeError(
             "Google Sheets write failed"
         ) from None
@@ -1321,8 +1317,8 @@ def sort_rows(
             gender,
             age,
             platform,
-            _view,
-            _click,
+            _click_1d,
+            _click_7d,
         ) = row
 
         if day not in (
