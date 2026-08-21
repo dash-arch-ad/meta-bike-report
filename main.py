@@ -47,24 +47,7 @@ def main():
         get_target_date_ranges()
     )
 
-    print("Month scope ranges:")
-    for r in monthly_12_ranges:
-        print(
-            f"  {r['month']} : "
-            f"{r['since']} - {r['until']}"
-        )
-
-    print("Other monthly scopes:")
-    for r in monthly_2_ranges:
-        print(
-            f"  {r['month']} : "
-            f"{r['since']} - {r['until']}"
-        )
-
-    print(
-        f"Day scope range: "
-        f"{daily_since} - {daily_until}"
-    )
+    print("Target date ranges calculated successfully")
 
     # --------------------------------------------------------
     # Meta取得
@@ -123,25 +106,35 @@ def load_secret():
     try:
         return json.loads(secret_env)
 
-    except json.JSONDecodeError as e:
-        # Secretの実値はログへ出さない
+    except json.JSONDecodeError:
         raise RuntimeError(
             "APP_SECRET_JSON is invalid JSON"
-        ) from e
+        ) from None
 
 
 def resolve_config(config):
 
-    meta_conf = config.get("meta", {})
-    sheets_conf = config.get("sheets", {})
+    meta_conf = config.get(
+        "meta",
+        {}
+    )
+
+    sheets_conf = config.get(
+        "sheets",
+        {}
+    )
 
     worksheet_name = (
-        sheets_conf.get("worksheet_name")
+        sheets_conf.get(
+            "worksheet_name"
+        )
         or DEFAULT_WORKSHEET_NAME
     )
 
     google_service_account = (
-        config.get("gcp_service_account")
+        config.get(
+            "gcp_service_account"
+        )
     )
 
     google_service_account = (
@@ -152,13 +145,22 @@ def resolve_config(config):
 
     return {
         "meta": {
-            "token": meta_conf.get("token"),
-            "account_id": meta_conf.get("account_id"),
+            "token":
+                meta_conf.get(
+                    "token"
+                ),
+
+            "account_id":
+                meta_conf.get(
+                    "account_id"
+                ),
         },
 
         "sheet": {
             "spreadsheet_id":
-                sheets_conf.get("spreadsheet_id"),
+                sheets_conf.get(
+                    "spreadsheet_id"
+                ),
 
             "worksheet_name":
                 worksheet_name,
@@ -192,6 +194,9 @@ def validate_config(resolved):
     ]
 
     if missing:
+
+        # Secretの実値は出さず、
+        # 不足している設定キー名のみ表示
         raise RuntimeError(
             "Missing required config keys: "
             + ", ".join(missing)
@@ -203,7 +208,9 @@ def normalize_google_service_account(creds):
     if not creds:
         return None
 
-    fixed = dict(creds)
+    fixed = dict(
+        creds
+    )
 
     private_key = fixed.get(
         "private_key",
@@ -211,6 +218,7 @@ def normalize_google_service_account(creds):
     )
 
     if private_key:
+
         fixed["private_key"] = (
             private_key.replace(
                 "\\n",
@@ -225,7 +233,10 @@ def normalize_google_service_account(creds):
 # 日付処理
 # ============================================================
 
-def add_months(base_date, months):
+def add_months(
+    base_date,
+    months
+):
 
     month = (
         base_date.month
@@ -279,13 +290,20 @@ def get_target_date_ranges():
     )
 
     # --------------------------------------------------------
-    # 当月に1日以上データがあるか
+    # 当月に取得可能日があるか
     # --------------------------------------------------------
 
     if yesterday >= this_month_start:
-        latest_month = this_month_start
+
+        latest_month = (
+            this_month_start
+        )
+
     else:
-        latest_month = last_month_start
+
+        latest_month = (
+            last_month_start
+        )
 
     # --------------------------------------------------------
     # month：過去12ヶ月
@@ -296,10 +314,12 @@ def get_target_date_ranges():
         -11
     )
 
-    monthly_12_ranges = build_month_ranges(
-        month_start_12,
-        latest_month,
-        yesterday
+    monthly_12_ranges = (
+        build_month_ranges(
+            month_start_12,
+            latest_month,
+            yesterday
+        )
     )
 
     # --------------------------------------------------------
@@ -311,18 +331,25 @@ def get_target_date_ranges():
         -1
     )
 
-    monthly_2_ranges = build_month_ranges(
-        month_start_2,
-        latest_month,
-        yesterday
+    monthly_2_ranges = (
+        build_month_ranges(
+            month_start_2,
+            latest_month,
+            yesterday
+        )
     )
 
     # --------------------------------------------------------
-    # day：前月1日～前日
+    # day：過去2ヶ月
     # --------------------------------------------------------
 
-    daily_since = month_start_2
-    daily_until = yesterday
+    daily_since = (
+        month_start_2
+    )
+
+    daily_until = (
+        yesterday
+    )
 
     return (
         monthly_12_ranges,
@@ -335,12 +362,14 @@ def get_target_date_ranges():
 def build_month_ranges(
     first_month,
     last_month,
-    yesterday,
+    yesterday
 ):
 
     ranges = []
 
-    current = first_month
+    current = (
+        first_month
+    )
 
     while current <= last_month:
 
@@ -362,17 +391,26 @@ def build_month_ranges(
         if until >= current:
 
             ranges.append({
-                "month": current,
-                "since": current,
-                "until": until,
+                "month":
+                    current,
+
+                "since":
+                    current,
+
+                "until":
+                    until,
             })
 
-        current = next_month
+        current = (
+            next_month
+        )
 
     return ranges
 
 
-def date_to_sheet_serial(value):
+def date_to_sheet_serial(
+    value
+):
 
     if not value:
         return ""
@@ -387,17 +425,30 @@ def date_to_sheet_serial(value):
 # Meta ID
 # ============================================================
 
-def normalize_meta_act_id(raw_act_id):
+def normalize_meta_act_id(
+    raw_act_id
+):
 
     cleaned = (
         str(raw_act_id)
-        .replace("act=", "")
-        .replace("act_", "")
-        .replace("act", "")
+        .replace(
+            "act=",
+            ""
+        )
+        .replace(
+            "act_",
+            ""
+        )
+        .replace(
+            "act",
+            ""
+        )
         .strip()
     )
 
-    return f"act_{cleaned}"
+    return (
+        f"act_{cleaned}"
+    )
 
 
 # ============================================================
@@ -441,17 +492,24 @@ def fetch_meta_rows(
 
         for item in data:
 
-            metrics = extract_lead_metrics(
-                item
+            metrics = (
+                extract_lead_metrics(
+                    item
+                )
             )
 
             rows.append(
                 make_output_row(
                     scope="month",
-                    month=month_range["month"],
+
+                    month=month_range[
+                        "month"
+                    ],
+
                     cv_view_1d=metrics[
                         "cv_view_1d"
                     ],
+
                     cv_click_7d=metrics[
                         "cv_click_7d"
                     ],
@@ -485,22 +543,29 @@ def fetch_meta_rows(
         if not day_str:
             continue
 
-        day_value = datetime.strptime(
-            day_str,
-            "%Y-%m-%d"
-        ).date()
+        day_value = (
+            datetime.strptime(
+                day_str,
+                "%Y-%m-%d"
+            ).date()
+        )
 
-        metrics = extract_lead_metrics(
-            item
+        metrics = (
+            extract_lead_metrics(
+                item
+            )
         )
 
         rows.append(
             make_output_row(
                 scope="day",
+
                 day=day_value,
+
                 cv_view_1d=metrics[
                     "cv_view_1d"
                 ],
+
                 cv_click_7d=metrics[
                     "cv_click_7d"
                 ],
@@ -508,7 +573,7 @@ def fetch_meta_rows(
         )
 
     # ========================================================
-    # 3～5. 月別系
+    # 3～5.
     # ad / gen_age / pf
     # 過去2ヶ月
     # ========================================================
@@ -536,29 +601,39 @@ def fetch_meta_rows(
 
         for item in ad_data:
 
-            metrics = extract_lead_metrics(
-                item
+            metrics = (
+                extract_lead_metrics(
+                    item
+                )
             )
 
             rows.append(
                 make_output_row(
                     scope="ad",
-                    month=month_range["month"],
+
+                    month=month_range[
+                        "month"
+                    ],
+
                     campaign_name=item.get(
                         "campaign_name",
                         ""
                     ),
+
                     adset_name=item.get(
                         "adset_name",
                         ""
                     ),
+
                     ad_name=item.get(
                         "ad_name",
                         ""
                     ),
+
                     cv_view_1d=metrics[
                         "cv_view_1d"
                     ],
+
                     cv_click_7d=metrics[
                         "cv_click_7d"
                     ],
@@ -588,25 +663,34 @@ def fetch_meta_rows(
 
         for item in gen_age_data:
 
-            metrics = extract_lead_metrics(
-                item
+            metrics = (
+                extract_lead_metrics(
+                    item
+                )
             )
 
             rows.append(
                 make_output_row(
                     scope="gen_age",
-                    month=month_range["month"],
+
+                    month=month_range[
+                        "month"
+                    ],
+
                     gender=item.get(
                         "gender",
                         ""
                     ),
+
                     age=item.get(
                         "age",
                         ""
                     ),
+
                     cv_view_1d=metrics[
                         "cv_view_1d"
                     ],
+
                     cv_click_7d=metrics[
                         "cv_click_7d"
                     ],
@@ -635,21 +719,29 @@ def fetch_meta_rows(
 
         for item in platform_data:
 
-            metrics = extract_lead_metrics(
-                item
+            metrics = (
+                extract_lead_metrics(
+                    item
+                )
             )
 
             rows.append(
                 make_output_row(
                     scope="pf",
-                    month=month_range["month"],
+
+                    month=month_range[
+                        "month"
+                    ],
+
                     platform=item.get(
                         "publisher_platform",
                         ""
                     ),
+
                     cv_view_1d=metrics[
                         "cv_view_1d"
                     ],
+
                     cv_click_7d=metrics[
                         "cv_click_7d"
                     ],
@@ -660,7 +752,7 @@ def fetch_meta_rows(
 
 
 # ============================================================
-# Insights API
+# Meta Insights API
 # ============================================================
 
 def fetch_meta_insights(
@@ -681,27 +773,37 @@ def fetch_meta_insights(
     )
 
     params = {
-        "access_token": token,
 
-        "level": level,
+        "access_token":
+            token,
 
-        "time_range": json.dumps({
-            "since":
-                since.strftime(
-                    "%Y-%m-%d"
-                ),
+        "level":
+            level,
 
-            "until":
-                until.strftime(
-                    "%Y-%m-%d"
-                ),
-        }),
+        "time_range":
+            json.dumps({
+                "since":
+                    since.strftime(
+                        "%Y-%m-%d"
+                    ),
+
+                "until":
+                    until.strftime(
+                        "%Y-%m-%d"
+                    ),
+            }),
 
         "fields":
-            ",".join(fields),
+            ",".join(
+                fields
+            ),
 
         "time_increment":
             time_increment,
+
+        # ----------------------------------------------------
+        # アトリビューション
+        # ----------------------------------------------------
 
         "action_attribution_windows":
             json.dumps([
@@ -715,59 +817,58 @@ def fetch_meta_insights(
         "use_unified_attribution_setting":
             "false",
 
-        "limit": 5000,
+        "limit":
+            5000,
     }
 
     if breakdowns:
+
         params["breakdowns"] = (
-            ",".join(breakdowns)
+            ",".join(
+                breakdowns
+            )
         )
 
     all_rows = []
 
     while True:
 
-        response = requests.get(
-            url,
-            params=params,
-            timeout=120
-        )
-
         try:
+
+            response = requests.get(
+                url,
+                params=params,
+                timeout=120
+            )
+
             response.raise_for_status()
 
-        except requests.HTTPError as e:
+        except requests.RequestException:
 
-            # レスポンス本文やURLをそのままログに出さない
+            # URL・Token・response.text等は
+            # ログへ出さない
             raise RuntimeError(
-                "Meta API request failed. "
-                f"status={response.status_code}"
-            ) from e
+                "Meta API request failed"
+            ) from None
 
-        payload = response.json()
+        try:
+
+            payload = (
+                response.json()
+            )
+
+        except ValueError:
+
+            raise RuntimeError(
+                "Meta API returned invalid JSON"
+            ) from None
 
         if "error" in payload:
 
-            error = payload.get(
-                "error",
-                {}
-            )
-
-            error_code = error.get(
-                "code",
-                "unknown"
-            )
-
-            error_type = error.get(
-                "type",
-                "unknown"
-            )
-
-            # messageやfbtrace_idなどはログへ出さない
+            # Meta APIのエラー内容そのものは
+            # 機密情報を含む可能性があるため出力しない
             raise RuntimeError(
-                "Meta API returned an error. "
-                f"code={error_code}, "
-                f"type={error_type}"
+                "Meta API returned an error"
             )
 
         batch = payload.get(
@@ -781,17 +882,27 @@ def fetch_meta_insights(
 
         next_url = (
             payload
-            .get("paging", {})
-            .get("next")
+            .get(
+                "paging",
+                {}
+            )
+            .get(
+                "next"
+            )
         )
 
         if not next_url:
             break
 
-        # next_urlにはaccess_tokenが含まれる可能性があるので
-        # 絶対にprintしない
-        url = next_url
-        params = None
+        # next_urlにはTokenが含まれる可能性があるため
+        # printしない
+        url = (
+            next_url
+        )
+
+        params = (
+            None
+        )
 
     return all_rows
 
@@ -800,11 +911,16 @@ def fetch_meta_insights(
 # CV抽出
 # ============================================================
 
-def extract_lead_metrics(item):
+def extract_lead_metrics(
+    item
+):
 
     result = {
-        "cv_view_1d": 0,
-        "cv_click_7d": 0,
+        "cv_view_1d":
+            0,
+
+        "cv_click_7d":
+            0,
     }
 
     actions = item.get(
@@ -821,7 +937,9 @@ def extract_lead_metrics(item):
     for action in actions:
 
         if (
-            action.get("action_type")
+            action.get(
+                "action_type"
+            )
             != TARGET_ACTION_TYPE
         ):
             continue
@@ -868,28 +986,47 @@ def make_output_row(
 ):
 
     return [
+
+        # A
         "meta",
+
+        # B
         scope,
 
+        # C
         date_to_sheet_serial(
             month
         ),
 
+        # D
         date_to_sheet_serial(
             day
         ),
 
+        # E
         campaign_name or "",
+
+        # F
         adset_name or "",
+
+        # G
         ad_name or "",
+
+        # H
         gender or "",
+
+        # I
         age or "",
+
+        # J
         platform or "",
 
+        # K
         to_number(
             cv_view_1d
         ),
 
+        # L
         to_number(
             cv_click_7d
         ),
@@ -920,8 +1057,10 @@ def connect_spreadsheet(
             )
         )
 
-        client = gspread.authorize(
-            creds
+        client = (
+            gspread.authorize(
+                creds
+            )
         )
 
         spreadsheet = (
@@ -930,19 +1069,18 @@ def connect_spreadsheet(
             )
         )
 
+        # シートID等はログに出さない
         print(
             "Google Sheets connected successfully"
         )
 
         return spreadsheet
 
-    except Exception as e:
+    except Exception:
 
-        # 認証オブジェクトの中身などをrepr(e)で
-        # そのままログに出さない
         raise RuntimeError(
             "Google Sheets connection failed"
-        ) from e
+        ) from None
 
 
 def write_to_sheet(
@@ -969,6 +1107,7 @@ def write_to_sheet(
     try:
 
         try:
+
             worksheet = (
                 spreadsheet.worksheet(
                     sheet_name
@@ -988,6 +1127,10 @@ def write_to_sheet(
                 )
             )
 
+        # ----------------------------------------------------
+        # 必要行数確保
+        # ----------------------------------------------------
+
         required_rows = max(
             len(rows) + 1,
             100
@@ -997,6 +1140,7 @@ def write_to_sheet(
             worksheet.row_count
             < required_rows
         ):
+
             worksheet.resize(
                 rows=required_rows
             )
@@ -1005,9 +1149,14 @@ def write_to_sheet(
             worksheet.col_count
             < 12
         ):
+
             worksheet.resize(
                 cols=12
             )
+
+        # ----------------------------------------------------
+        # 既存データ削除
+        # ----------------------------------------------------
 
         worksheet.clear()
 
@@ -1016,11 +1165,19 @@ def write_to_sheet(
             + rows
         )
 
+        # ----------------------------------------------------
+        # 書き込み
+        # ----------------------------------------------------
+
         worksheet.update(
             range_name="A1",
             values=output,
             value_input_option="RAW",
         )
+
+        # ----------------------------------------------------
+        # C/D列を日付型へ
+        # ----------------------------------------------------
 
         format_date_columns(
             spreadsheet=spreadsheet,
@@ -1028,22 +1185,27 @@ def write_to_sheet(
             row_count=len(output),
         )
 
+        # ----------------------------------------------------
+        # 1行目固定
+        # ----------------------------------------------------
+
         worksheet.freeze(
             rows=1
         )
 
+        # sheet_nameはログに出さない
         print(
             f"Write success: "
-            f"{sheet_name} "
-            f"({len(rows)} rows)"
+            f"{len(rows)} rows"
         )
 
-    except Exception as e:
+    except Exception:
 
-        # 例外全文をログに出さない
+        # sheet_nameや認証系情報を
+        # エラーログへ出さない
         raise RuntimeError(
-            f"Google Sheets write failed: {sheet_name}"
-        ) from e
+            "Google Sheets write failed"
+        ) from None
 
 
 def format_date_columns(
@@ -1055,13 +1217,17 @@ def format_date_columns(
     if row_count <= 1:
         return
 
-    sheet_id = worksheet.id
+    sheet_id = (
+        worksheet.id
+    )
 
     request = {
         "requests": [
             {
                 "repeatCell": {
+
                     "range": {
+
                         "sheetId":
                             sheet_id,
 
@@ -1071,17 +1237,24 @@ def format_date_columns(
                         "endRowIndex":
                             row_count,
 
+                        # C列
                         "startColumnIndex":
                             2,
 
+                        # D列まで
                         "endColumnIndex":
                             4,
                     },
 
                     "cell": {
+
                         "userEnteredFormat": {
+
                             "numberFormat": {
-                                "type": "DATE",
+
+                                "type":
+                                    "DATE",
+
                                 "pattern":
                                     "yyyy-mm-dd",
                             }
@@ -1095,29 +1268,50 @@ def format_date_columns(
         ]
     }
 
-    spreadsheet.batch_update(
-        request
-    )
+    try:
+
+        spreadsheet.batch_update(
+            request
+        )
+
+    except Exception:
+
+        raise RuntimeError(
+            "Google Sheets date formatting failed"
+        ) from None
 
 
 # ============================================================
 # 並び替え
 # ============================================================
 
-def sort_rows(rows):
+def sort_rows(
+    rows
+):
 
     scope_order = {
-        "month": 0,
-        "day": 1,
-        "ad": 2,
-        "gen_age": 3,
-        "pf": 4,
+        "month":
+            0,
+
+        "day":
+            1,
+
+        "ad":
+            2,
+
+        "gen_age":
+            3,
+
+        "pf":
+            4,
     }
 
-    def sort_key(row):
+    def sort_key(
+        row
+    ):
 
         (
-            media,
+            _media,
             scope,
             month,
             day,
@@ -1131,20 +1325,29 @@ def sort_rows(rows):
             _click,
         ) = row
 
-        period = (
-            day
-            if day not in ("", None)
-            else month
-        )
+        if day not in (
+            "",
+            None
+        ):
 
-        period = (
-            period
-            if isinstance(
-                period,
-                (int, float)
+            period = (
+                day
             )
-            else 0
-        )
+
+        else:
+
+            period = (
+                month
+            )
+
+        if not isinstance(
+            period,
+            (int, float)
+        ):
+
+            period = (
+                0
+            )
 
         return (
             scope_order.get(
@@ -1172,7 +1375,9 @@ def sort_rows(rows):
 # 数値処理
 # ============================================================
 
-def to_number(value):
+def to_number(
+    value
+):
 
     if value in (
         None,
@@ -1187,6 +1392,7 @@ def to_number(value):
         )
 
         if number.is_integer():
+
             return int(
                 number
             )
@@ -1197,6 +1403,7 @@ def to_number(value):
         TypeError,
         ValueError
     ):
+
         return 0
 
 
